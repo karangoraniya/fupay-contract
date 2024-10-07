@@ -1,38 +1,43 @@
+
+
 contract;
 
+use std::address::Address;
+use std::storage::storage_vec::*;
+
 use std::{
-    auth::msg_sender,
-    context::this_balance,
-    call_frames::msg_asset_id,
     asset::transfer,
+    auth::msg_sender,
+    call_frames::msg_asset_id,
+    context::msg_amount,
+    context::this_balance,
 };
 
 abi FuPay {
     #[payable]
-    fn transfer(recipient: Identity, amount: u64, asset: Option<AssetId>);
+    fn transfer(recipient: Address, asset_id: AssetId, amount: u64, reference: u64);
 }
 
+
 impl FuPay for Contract {
+
     #[payable]
-    fn transfer(recipient: Identity, amount: u64, asset: Option<AssetId>) {
+    fn transfer(recipient: Address, asset_id: AssetId, amount: u64, reference: u64) {
+        let asset = AssetId::from(asset_id);
         let sender = msg_sender().unwrap();
-        let token = asset.unwrap_or(AssetId::default());
+        
 
-        if token == AssetId::default() {
-            // For native token, use the amount sent with the transaction
-            let native_amount = this_balance(AssetId::default());
-            require(native_amount >= amount, "Insufficient native tokens sent");
-        }
-
-        transfer(recipient, token, amount);
+        transfer(Identity::Address(recipient), asset, amount);
         
         log(TransferEvent {
-            token,
-            from: sender,
-            to: recipient,
+            token: asset,
+            from: sender, // Ensure sender is also an Identity
+            to: Identity::Address(recipient),
             amount,
+            reference,
         });
     }
+
 }
 
 struct TransferEvent {
@@ -40,5 +45,5 @@ struct TransferEvent {
     from: Identity,
     to: Identity,
     amount: u64,
+    reference: u64,
 }
-
